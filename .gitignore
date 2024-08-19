@@ -70,3 +70,10 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Ignore WebGL directory
+/WebGL/"Assets/TextMesh Pro/Fonts/RocknRollOne-Regular SDF.asset" 
+"Assets/TextMesh Pro/Fonts/RocknRollOne-Regular SDF.asset" 
+"Assets/TextMesh Pro/Fonts/RocknRollOne-Regular SDF.asset" 
+
+WebGL/

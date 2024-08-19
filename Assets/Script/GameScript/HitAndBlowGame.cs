@@ -1,0 +1,104 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
+using System.Linq;
+
+public class HitAndBlowGame : MonoBehaviour
+{
+    private int[] answer;
+    private List<int[]> guesses;
+    private System.Random random = new System.Random();
+
+    public TextMeshProUGUI numberDisplay;
+    public TextMeshProUGUI resultText;
+    public Button postButton;
+
+    private static int DIGIT_NUM = 3;
+
+    void Start()
+    {
+        GenerateAnswer();
+        guesses = new List<int[]>();
+        postButton.onClick.AddListener(OnPostButtonClick);
+        resultText.text = "";
+    }
+
+    void GenerateAnswer()
+    {
+        answer = new int[DIGIT_NUM];
+        List<int> availableNumbers = new List<int>();
+
+        // 0から9までの数字をリストに追加
+        for (int i = 0; i <= 9; i++)
+        {
+            availableNumbers.Add(i);
+        }
+
+        // DIGIT_NUM 回繰り返して重複しない数字を選択
+        for (int i = 0; i < answer.Length; i++)
+        {
+            int index = random.Next(availableNumbers.Count); // 使用可能な数字のリストからランダムにインデックスを取得
+            answer[i] = availableNumbers[index]; // ランダムに選ばれた数字を答えに追加
+            availableNumbers.RemoveAt(index); // 選ばれた数字をリストから削除
+        }
+
+        Debug.Log("Answer: " + string.Join("", answer));
+    }
+
+    public (int hits, int blows) CheckGuess(int[] guess)
+    {
+        int hits = 0;
+        int blows = 0;
+
+        for (int i = 0; i < guess.Length; i++)
+        {
+            if (guess[i] == answer[i])
+            {
+                hits++;
+            }
+            else if (answer.Contains(guess[i]))
+            {
+                blows++;
+            }
+        }
+
+        guesses.Add(guess);
+        return (hits, blows);
+    }
+
+    void OnPostButtonClick()
+    {
+        string guessInput = numberDisplay.text;
+
+        //桁数がDIGIT_NUMでないときまたはint型に変換できないとき
+        if (guessInput.Length != DIGIT_NUM || !int.TryParse(guessInput, out _))
+        {
+            resultText.text = "Please enter a valid 3 digit number.";
+            return;
+        }
+
+        int[] guess = new int[DIGIT_NUM];
+        for (int i = 0; i < guessInput.Length; i++)
+        {
+            guess[i] = int.Parse(guessInput[i].ToString());
+        }
+
+        var (hits, blows) = CheckGuess(guess);
+        resultText.text = $"Hits: {hits}, Blows: {blows}";
+
+        if (hits == 3)
+        {
+            resultText.text += "\nIs the correct answer!";
+        }
+    }
+
+
+    //現在使っていない
+    public List<int[]> GetGuesses()
+    {
+        return guesses;
+    }
+}
