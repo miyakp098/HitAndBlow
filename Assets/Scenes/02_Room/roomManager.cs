@@ -16,7 +16,7 @@ public class roomManager : MonoBehaviourPunCallbacks
     {
         UpdatePlayerList();
         startButton.onClick.AddListener(OnStartButtonClicked);
-        startButton.interactable = false; // 初期状態でボタンを非活性化
+        startButton.interactable = false; // 初期状態でボタンを非表示
     }
 
     public override void OnPlayerEnteredRoom(Player newPlayer)

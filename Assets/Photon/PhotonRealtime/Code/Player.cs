@@ -69,6 +69,11 @@ namespace Photon.Realtime
         /// <summary>Background field for nickName.</summary>
 		private string nickName = string.Empty;
 
+        public void SetCustomProperties(System.Collections.Hashtable playerProperties)
+        {
+            throw new NotImplementedException();
+        }
+
         /// <summary>Non-unique nickname of this player. Synced automatically in a room.</summary>
         /// <remarks>
         /// A player might change his own playername in a room (it's only a property).

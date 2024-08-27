@@ -31,18 +31,18 @@ public class HitAndBlowGame : MonoBehaviour
         answer = new int[DIGIT_NUM];
         List<int> availableNumbers = new List<int>();
 
-        // 0‚©‚ç9‚Ü‚Å‚Ì”š‚ğƒŠƒXƒg‚É’Ç‰Á
+        // 0ã‹ã‚‰9ã¾ã§ã®æ•°å­—ã‚’ãƒªã‚¹ãƒˆã«è¿½åŠ 
         for (int i = 0; i <= 9; i++)
         {
             availableNumbers.Add(i);
         }
 
-        // DIGIT_NUM ‰ñŒJ‚è•Ô‚µ‚Äd•¡‚µ‚È‚¢”š‚ğ‘I‘ğ
+        // DIGIT_NUM å›ç¹°ã‚Šè¿”ã—ã¦é‡è¤‡ã—ãªã„æ•°å­—ã‚’é¸æŠ
         for (int i = 0; i < answer.Length; i++)
         {
-            int index = random.Next(availableNumbers.Count); // g—p‰Â”\‚È”š‚ÌƒŠƒXƒg‚©‚çƒ‰ƒ“ƒ_ƒ€‚ÉƒCƒ“ƒfƒbƒNƒX‚ğæ“¾
-            answer[i] = availableNumbers[index]; // ƒ‰ƒ“ƒ_ƒ€‚É‘I‚Î‚ê‚½”š‚ğ“š‚¦‚É’Ç‰Á
-            availableNumbers.RemoveAt(index); // ‘I‚Î‚ê‚½”š‚ğƒŠƒXƒg‚©‚çíœ
+            int index = random.Next(availableNumbers.Count); // ä½¿ç”¨å¯èƒ½ãªæ•°å­—ã®ãƒªã‚¹ãƒˆã‹ã‚‰ãƒ©ãƒ³ãƒ€ãƒ ã«ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ã‚’å–å¾—
+            answer[i] = availableNumbers[index]; // ãƒ©ãƒ³ãƒ€ãƒ ã«é¸ã°ã‚ŒãŸæ•°å­—ã‚’ç­”ãˆã«è¿½åŠ 
+            availableNumbers.RemoveAt(index); // é¸ã°ã‚ŒãŸæ•°å­—ã‚’ãƒªã‚¹ãƒˆã‹ã‚‰å‰Šé™¤
         }
 
         Debug.Log("Answer: " + string.Join("", answer));
@@ -73,7 +73,7 @@ public class HitAndBlowGame : MonoBehaviour
     {
         string guessInput = numberDisplay.text;
 
-        //Œ…”‚ªDIGIT_NUM‚Å‚È‚¢‚Æ‚«‚Ü‚½‚ÍintŒ^‚É•ÏŠ·‚Å‚«‚È‚¢‚Æ‚«
+        //æ¡æ•°ãŒDIGIT_NUMã§ãªã„ã¨ãã¾ãŸã¯intå‹ã«å¤‰æ›ã§ããªã„ã¨ã
         if (guessInput.Length != DIGIT_NUM || !int.TryParse(guessInput, out _))
         {
             resultText.text = "Please enter a valid 3 digit number.";
@@ -96,7 +96,7 @@ public class HitAndBlowGame : MonoBehaviour
     }
 
 
-    //Œ»İg‚Á‚Ä‚¢‚È‚¢
+    //ç¾åœ¨ä½¿ã£ã¦ã„ãªã„
     public List<int[]> GetGuesses()
     {
         return guesses;

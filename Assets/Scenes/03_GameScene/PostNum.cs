@@ -3,13 +3,19 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using Photon.Pun;
+using ExitGames.Client.Photon;
 
-public class PostNum : MonoBehaviour
+public class PostNum : MonoBehaviourPun
 {
     public Button[] numberButtons; // ボタンを格納する配列
     public TextMeshProUGUI numberDisplay; // 数字を表示するText
     public Button backspaceButton; // バックスペースボタン
     public Button postButton; // ポストボタン
+    public Button generateAnswerButton; // answer生成ボタン
+
+    public TextMeshProUGUI playerAnswerText; // プレイヤーの答えを表示するTextMeshProUGUI
+    public TextMeshProUGUI opponentAnswerText; // 相手の答えを表示するTextMeshProUGUI
 
     private List<int> buttonHistory = new List<int>(); // クリックされたボタンの履歴
     private const int DIGIT_NUM = 3;
@@ -17,11 +23,14 @@ public class PostNum : MonoBehaviour
     void Start()
     {
         numberDisplay.text = "";
+        playerAnswerText.text = "";
+        opponentAnswerText.text = "";
         InitializeButtons();
 
         // 初期状態でバックスペースボタンとポストボタンを無効化
-        backspaceButton.interactable = false;
         postButton.interactable = false;
+        backspaceButton.interactable = false;        
+        postButton.gameObject.SetActive(false);
     }
 
     void InitializeButtons()
@@ -35,6 +44,7 @@ public class PostNum : MonoBehaviour
 
         backspaceButton.onClick.AddListener(OnBackspaceClicked);
         postButton.onClick.AddListener(OnPostButtonClick);
+        generateAnswerButton.onClick.AddListener(OnGenerateAnswerClick);
     }
 
     void OnButtonClicked(int number)
@@ -62,17 +72,66 @@ public class PostNum : MonoBehaviour
 
     void OnPostButtonClick()
     {
-        numberDisplay.text = "";
+        ResetDisplay();
 
+        // 自分の答えを相手と同期する
+        photonView.RPC("UpdateOpponentAnswer", RpcTarget.OthersBuffered, playerAnswerText.text);
+    }
+
+    void OnGenerateAnswerClick()
+    {
+        int[] answer = new int[DIGIT_NUM];
+
+        // `numberDisplay.text` を `int[]` に変換
+        for (int i = 0; i < DIGIT_NUM; i++)
+        {
+            answer[i] = int.Parse(numberDisplay.text[i].ToString());
+        }
+
+        // 自分の答えを入力したnumberDisplay.textをplayerAnswerText.textに保存、表示
+        playerAnswerText.text = numberDisplay.text;
+
+        ResetDisplay();
+        
+        generateAnswerButton.gameObject.SetActive(false);
+
+        // 自分の答えが生成されたことを相手に通知
+        photonView.RPC("UpdateOpponentAnswer", RpcTarget.OthersBuffered, playerAnswerText.text);
+
+
+        //答えが両方のプレイヤーが作成したらボタンを生成
+        if (playerAnswerText.text != "" && opponentAnswerText.text != "")
+        {
+            photonView.RPC("HandleButtonsAfterAnswerGenerated", RpcTarget.AllBuffered);
+        }
+
+
+    }
+
+    void ResetDisplay()
+    {
+        numberDisplay.text = "";
         foreach (var button in numberButtons)
         {
             button.interactable = true;
         }
-
         buttonHistory.Clear();
-
         // ポストボタンの活性状態を更新
         UpdatePostButtonState();
+    }
+
+    [PunRPC]
+    void UpdateOpponentAnswer(string answerText)
+    {
+        opponentAnswerText.text = answerText;
+    }
+
+    [PunRPC]
+    void HandleButtonsAfterAnswerGenerated()
+    {
+        //postButtonを作成
+        postButton.gameObject.SetActive(true);
+        postButton.interactable = false;
     }
 
     void AddNumberToDisplay(int number)
@@ -97,10 +156,12 @@ public class PostNum : MonoBehaviour
         if(numberDisplay.text.Length == DIGIT_NUM)
         {
             postButton.interactable = true;//活性
+            generateAnswerButton.interactable = true;//活性
         }
         else
         {
             postButton.interactable = false;//非活性
+            generateAnswerButton.interactable = false;//非活性
         }
 
         // テキストに数字が入っている場合ボタン活性化
@@ -112,5 +173,5 @@ public class PostNum : MonoBehaviour
         {
             backspaceButton.interactable = false;
         }     
-    }
+    }    
 }
