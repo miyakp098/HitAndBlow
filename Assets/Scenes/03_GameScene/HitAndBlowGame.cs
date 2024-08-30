@@ -17,8 +17,11 @@ public class HitAndBlowGame : MonoBehaviourPun
     public TextMeshProUGUI resultText;
     public Button postButton;
 
-    public TextMeshProUGUI playerAnswerText; // プレイヤーの答えを表示するTextMeshProUGUI
-    public TextMeshProUGUI opponentAnswerText; // 相手の答えを表示するTextMeshProUGUI
+    public TextMeshProUGUI playerAnswerText; // 自分の答え
+    public TextMeshProUGUI opponentAnswerText; // 相手の答え
+
+    public TextMeshProUGUI playerGuessListText;
+    public TextMeshProUGUI opponentGuessListText;
 
     private static int DIGIT_NUM = 3;
     private bool isGameOver = false; // ゲーム終了フラグ
@@ -70,6 +73,8 @@ public class HitAndBlowGame : MonoBehaviourPun
             return;
         }
 
+        
+
         int[] guess = new int[DIGIT_NUM];
         for (int i = 0; i < guessInput.Length; i++)
         {
@@ -79,7 +84,9 @@ public class HitAndBlowGame : MonoBehaviourPun
         var (hits, blows) = CheckGuess(guess);
         resultText.text = $"Hits: {hits}, Blows: {blows}";
 
-        photonView.RPC("SyncResult", RpcTarget.Others, hits, blows); // 他のプレイヤーに結果を共有
+        playerGuessListText.text += $"{numberDisplay.text} : Hits:{hits}, Blows:{blows}\n";
+
+        photonView.RPC("SyncResult", RpcTarget.OthersBuffered, guessInput, hits, blows); // 他のプレイヤーに結果を共有
 
         if (hits == 3)
         {
@@ -90,9 +97,9 @@ public class HitAndBlowGame : MonoBehaviourPun
     }
 
     [PunRPC]
-    void SyncResult(int hits, int blows)
+    void SyncResult(string guessInput, int hits, int blows)
     {
-        resultText.text = $"Opponent's Guess: Hits: {hits}, Blows: {blows}";
+        opponentGuessListText.text += $"{guessInput} : Hits:{hits}, Blows:{blows}\n";
     }
 
     [PunRPC]
