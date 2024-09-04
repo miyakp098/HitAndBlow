@@ -5,6 +5,10 @@ using UnityEngine.UI;
 using TMPro;
 using Photon.Pun;
 using ExitGames.Client.Photon;
+using System;
+using System.Linq;
+using Photon.Realtime;
+using UnityEngine.SceneManagement;
 
 public class UIManager : MonoBehaviourPun
 {
@@ -12,20 +16,44 @@ public class UIManager : MonoBehaviourPun
     public Button backspaceButton;
     public Button postButton;
     public Button generateAnswerButton;
+    public Button returnStartSceneButton;
 
     public TextMeshProUGUI guessNumberText; // 数字を表示するText
     public TextMeshProUGUI myAnswerText; // 自分の答え
     public TextMeshProUGUI opponentAnswerText; // 相手の答え
 
+    public TextMeshProUGUI explainText;
+    public TextMeshProUGUI myGuessListText;
+    public TextMeshProUGUI opponentGuessListText;
+    public GameObject objectToHide;
+
+    public AudioClip pushButtonNum;
+    public AudioClip pushButtonBS;
+
     private List<int> buttonHistory = new List<int>(); // クリックされたボタンの履歴
     private const int DIGIT_NUM = 3;
+    private int myHits = 0;
+    private int opponentHits = 0;
+
+    private int[] answer;
+    private List<int[]> guesses;
+    public List<int[]> GetGuesses()
+    {
+        return guesses;
+    }
+
+    private bool isGameOver = false; // ゲーム終了フラグ
 
     void Start()
     {
         guessNumberText.text = "";
         myAnswerText.text = "";
         opponentAnswerText.text = "";
+        explainText.text = "自分の3桁の数字を設定";
+
         InitializeButtons();
+
+        guesses = new List<int[]>();
     }
 
     void InitializeButtons()
@@ -41,15 +69,19 @@ public class UIManager : MonoBehaviourPun
         backspaceButton.onClick.AddListener(OnBackspaceClicked);
         postButton.onClick.AddListener(OnPostButtonClick);
         generateAnswerButton.onClick.AddListener(OnGenerateAnswerClick);
-
+        returnStartSceneButton.onClick.AddListener(OnReturnStartSceneClick);
+        
         // 初期状態でバックスペースボタンとポストボタンを無効化
         postButton.interactable = false;
         backspaceButton.interactable = false;
         postButton.gameObject.SetActive(false);
+        returnStartSceneButton.gameObject.SetActive(false);
     }
 
     void OnNumberButtonClicked(int number)
     {
+        GameManager.instance.PlaySE(pushButtonNum);
+
         // 現在のテキストの長さをチェックして、DIGIT_NUM未満の場合のみ追加
         if (guessNumberText.text.Length < DIGIT_NUM)
         {
@@ -61,6 +93,8 @@ public class UIManager : MonoBehaviourPun
 
     void OnBackspaceClicked()
     {
+        GameManager.instance.PlaySE(pushButtonBS);
+
         if (buttonHistory.Count > 0)
         {
             RemoveLastNumberFromGuessNumber();
@@ -71,17 +105,126 @@ public class UIManager : MonoBehaviourPun
 
     void OnPostButtonClick()
     {
-        ResetGuessNumber();
+        GameManager.instance.PlaySE(pushButtonNum);
+        if (isGameOver) return; // ゲーム終了後は何も行わない
 
+        string guessInput = guessNumberText.text;
+
+        if (guessInput.Length != DIGIT_NUM || !int.TryParse(guessInput, out _))
+        {
+            explainText.text = "Please enter a valid 3 digit number.";
+            return;
+        }
+
+        int[] guess = new int[DIGIT_NUM];
+        for (int i = 0; i < guessInput.Length; i++)
+        {
+            guess[i] = int.Parse(guessInput[i].ToString());
+        }
+
+        var (hits, blows) = CheckGuess(guess);
+
+        myHits = hits;
+        myGuessListText.text += $"   {guessInput}      {hits}   {blows}\n";
+        photonView.RPC("SyncResult", RpcTarget.OthersBuffered, guessInput, hits, blows); // 他のプレイヤーに結果を共有
+
+        if (hits == 3)
+        {
+            explainText.text = "相手が当てるまで待機";
+            objectToHide.SetActive(false);
+            DisableAllButtons();
+            photonView.RPC("CheckWinCondition", RpcTarget.All);
+        }
+        ResetGuessNumber();
         // 自分の答えを相手と同期する
         photonView.RPC("UpdateOpponentAnswer", RpcTarget.OthersBuffered, myAnswerText.text);
     }
 
+    [PunRPC]
+    void SyncResult(string guessInput, int hits, int blows)
+    {
+        opponentGuessListText.text += $"   {guessInput}      {hits}   {blows}\n";
+        opponentHits = hits;
+    }
+
+    [PunRPC]
+    void GameOver()
+    {
+        returnStartSceneButton.gameObject.SetActive(true);
+    }
+
+    [PunRPC]
+    void CheckWinCondition()
+    {
+        // 自分と相手のヒット数が3であることを確認
+        if (myHits == DIGIT_NUM && opponentHits == DIGIT_NUM)
+        {
+            int myGuessCount = myGuessListText.text.Split('\n').Length;
+            int opponentGuessCount = opponentGuessListText.text.Split('\n').Length;
+
+            if (myGuessCount < opponentGuessCount)
+            {
+                explainText.text = "あなたの勝ち！";
+                photonView.RPC("SetLoserText", RpcTarget.Others); // 相手に負けメッセージを表示
+            }
+            else if (myGuessCount > opponentGuessCount)
+            {
+                explainText.text = "あなたの負け！";
+                photonView.RPC("SetWinnerText", RpcTarget.Others); // 相手に勝ちメッセージを表示
+            }
+            else
+            {
+                explainText.text = "引き分け！";
+                photonView.RPC("SetDrawText", RpcTarget.Others); // 引き分けメッセージを表示
+            }
+
+            // ゲーム終了処理を呼び出す
+            photonView.RPC("GameOver", RpcTarget.All);
+        }
+    }
+
+    [PunRPC]
+    void SetWinnerText()
+    {
+        // 自分が勝った場合
+        explainText.text = "あなたの勝ち！";
+    }
+
+    [PunRPC]
+    void SetLoserText()
+    {
+        // 相手が負けた場合
+        explainText.text = "あなたの負け！";
+    }
+
+    [PunRPC]
+    void SetDrawText()
+    {
+        // 引き分けの場合
+        explainText.text = "引き分け！";
+    }
+
+    void DisableAllButtons() //ボタンを非活性にする
+    {
+        
+        foreach (var button in numberButtons)
+        {
+            button.gameObject.SetActive(false);
+        }
+
+        backspaceButton.gameObject.SetActive(false);
+        postButton.gameObject.SetActive(false);
+    }
+
+    
+
     void OnGenerateAnswerClick()
     {
+        GameManager.instance.PlaySE(pushButtonNum);
+
         // myAnswerText.textに保存
         myAnswerText.text = guessNumberText.text;
-
+        explainText.text = "相手の入力が終わるまで待機...";
         ResetGuessNumber();
         generateAnswerButton.gameObject.SetActive(false);
 
@@ -94,6 +237,13 @@ public class UIManager : MonoBehaviourPun
         {
             photonView.RPC("HandleButtonsAfterAnswerGenerated", RpcTarget.AllBuffered);
         }
+    }
+
+    void OnReturnStartSceneClick()
+    {
+        PhotonNetwork.LeaveRoom();
+        PhotonNetwork.NickName = "名無し";
+        SceneManager.LoadScene("01_StartScene");
     }
 
     void ResetGuessNumber()
@@ -120,6 +270,8 @@ public class UIManager : MonoBehaviourPun
         //postButtonを作成
         postButton.gameObject.SetActive(true);
         postButton.interactable = false;
+
+        explainText.text = "相手の数字を予想";
     }
 
     void AddNumberToDisplay(int number)
@@ -161,5 +313,33 @@ public class UIManager : MonoBehaviourPun
         {
             backspaceButton.interactable = false;
         }     
-    }    
+    }
+
+    public (int hits, int blows) CheckGuess(int[] guess)
+    {
+        int hits = 0;
+        int blows = 0;
+
+        answer = new int[DIGIT_NUM];
+
+        for (int i = 0; i < DIGIT_NUM; i++)
+        {
+            answer[i] = int.Parse(opponentAnswerText.text[i].ToString());
+        }
+
+        for (int i = 0; i < guess.Length; i++)
+        {
+            if (guess[i] == answer[i])
+            {
+                hits++;
+            }
+            else if (answer.Contains(guess[i]))
+            {
+                blows++;
+            }
+        }
+
+        guesses.Add(guess);
+        return (hits, blows);
+    }
 }

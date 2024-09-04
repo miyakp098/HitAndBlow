@@ -14,6 +14,8 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     [SerializeField] private TMP_InputField userNameInputField; // ユーザ名を入力するフィールド
     [SerializeField] private TMP_Text errorText; // エラーメッセージを表示するUI要素を取得
 
+    [SerializeField] private AudioClip pushButton;
+
     private List<RoomInfo> roomList = new List<RoomInfo>();
 
     void Start()
@@ -24,8 +26,20 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         // ユーザ名を設定（デフォルトは "testUser"）
         PhotonNetwork.NickName = "名無し";
 
+        // createRoomButtonを非活性化
+        createRoomButton.interactable = false;
+
+        // ユーザ名入力フィールドの変更イベントを監視してボタンの状態を更新
+        userNameInputField.onValueChanged.AddListener(UpdateCreateRoomButtonState);
+
         // サーバに接続
         PhotonNetwork.ConnectUsingSettings();
+    }
+
+    private void UpdateCreateRoomButtonState(string input)
+    {
+        // 入力フィールドが空でない場合のみボタンを活性化
+        createRoomButton.interactable = !string.IsNullOrEmpty(input);
     }
 
     public override void OnConnectedToMaster()
@@ -110,6 +124,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
     private void CreateRoom()
     {
+        GameManager.instance.PlaySE(pushButton);
         // ユーザ名を設定（入力フィールドから取得）
         if (!string.IsNullOrEmpty(userNameInputField.text))
         {

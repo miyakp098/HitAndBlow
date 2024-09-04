@@ -1,24 +1,19 @@
 using UnityEngine;
-using Photon.Pun;
 using Photon.Realtime;
+using Photon.Pun;
 using TMPro;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 
-public class roomManager : MonoBehaviourPunCallbacks
+public class ShowName : MonoBehaviourPunCallbacks
 {
     [SerializeField] private TextMeshProUGUI roomCreatorText; // ルーム作成者のテキスト
     [SerializeField] private TextMeshProUGUI joinedPlayerText; // 入室したプレイヤーのテキスト
-    [SerializeField] private Button startButton;
-
-    [SerializeField] private AudioClip pushButton;
 
     void Start()
     {
         UpdatePlayerList();
-        startButton.onClick.AddListener(OnStartButtonClicked);
-        startButton.interactable = false; // 初期状態でボタンを非表示
     }
 
     public override void OnPlayerEnteredRoom(Player newPlayer)
@@ -52,44 +47,5 @@ public class roomManager : MonoBehaviourPunCallbacks
         {
             joinedPlayerText.text = "待機中...";
         }
-
-        // ルーム作成者だけがStartボタンを押せるようにする
-        if (PhotonNetwork.IsMasterClient)
-        {
-            startButton.gameObject.SetActive(true);
-        }
-        else
-        {
-            startButton.gameObject.SetActive(false);
-        }
-
-        // プレイヤー数が2人ならスタートボタンを活性化
-        if(players.Length == 2)
-        {
-            startButton.interactable = true;
-        }
-        else
-        {
-            startButton.interactable = false;
-        }
-        
-    }
-
-    private void OnStartButtonClicked()
-    {
-        GameManager.instance.PlaySE(pushButton);
-
-        if (PhotonNetwork.IsMasterClient)
-        {
-            // 全プレイヤーにシーン遷移のRPCを送信
-            photonView.RPC("StartGame", RpcTarget.All);
-        }
-    }
-
-    [PunRPC]
-    private void StartGame()
-    {
-        // シーンを切り替える
-        SceneManager.LoadScene("03_GameScene");
     }
 }
