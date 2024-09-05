@@ -14,6 +14,10 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     [SerializeField] private TMP_InputField userNameInputField; // ユーザ名を入力するフィールド
     [SerializeField] private TMP_Text errorText; // エラーメッセージを表示するUI要素を取得
 
+    // それぞれのボタンをUnity Editorで設定するための配列
+    [SerializeField] private Button[] letterButtons;
+    [SerializeField] private Button backspaceButton; // バックスペースボタン
+
     [SerializeField] private AudioClip pushButton;
 
     private List<RoomInfo> roomList = new List<RoomInfo>();
@@ -22,6 +26,15 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     {
         // ボタンのクリックイベントを設定
         createRoomButton.onClick.AddListener(CreateRoom);
+
+        // 各ボタンにイベントリスナーを追加
+        foreach (Button button in letterButtons)
+        {
+            string buttonText = button.GetComponentInChildren<TMP_Text>().text; // ボタンの文字を取得
+            button.onClick.AddListener(() => AddLetter(buttonText)); // ボタンが押されたときに文字を追加
+        }
+
+        backspaceButton.onClick.AddListener(RemoveLastLetter); // バックスペースボタンが押されたときに文字を削除
 
         // ユーザ名を設定（デフォルトは "testUser"）
         PhotonNetwork.NickName = "名無し";
@@ -34,6 +47,23 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
         // サーバに接続
         PhotonNetwork.ConnectUsingSettings();
+    }
+
+    // ボタンが押されたときに文字を追加するメソッド
+    private void AddLetter(string letter)
+    {
+        GameManager.instance.PlaySE(pushButton);
+        userNameInputField.text += letter; // フィールドに文字を追加
+    }
+
+    // バックスペースボタンが押されたときに最後の文字を削除するメソッド
+    private void RemoveLastLetter()
+    {
+        GameManager.instance.PlaySE(pushButton);
+        if (userNameInputField.text.Length > 0)
+        {
+            userNameInputField.text = userNameInputField.text.Substring(0, userNameInputField.text.Length - 1); // 最後の文字を削除
+        }
     }
 
     private void UpdateCreateRoomButtonState(string input)

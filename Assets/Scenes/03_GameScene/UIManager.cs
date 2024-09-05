@@ -25,6 +25,7 @@ public class UIManager : MonoBehaviourPun
     public TextMeshProUGUI explainText;
     public TextMeshProUGUI myGuessListText;
     public TextMeshProUGUI opponentGuessListText;
+    public TextMeshProUGUI opponentTurnText;
     public GameObject objectToHide;
 
     public AudioClip pushButtonNum;
@@ -49,12 +50,13 @@ public class UIManager : MonoBehaviourPun
         guessNumberText.text = "";
         myAnswerText.text = "";
         opponentAnswerText.text = "";
+        opponentTurnText.text = "";
         explainText.text = "自分の3桁の数字を設定";
 
         InitializeButtons();
 
         guesses = new List<int[]>();
-    }
+    } 
 
     void InitializeButtons()
     {        
@@ -128,16 +130,43 @@ public class UIManager : MonoBehaviourPun
         myGuessListText.text += $"   {guessInput}      {hits}   {blows}\n";
         photonView.RPC("SyncResult", RpcTarget.OthersBuffered, guessInput, hits, blows); // 他のプレイヤーに結果を共有
 
+        
+
         if (hits == 3)
         {
-            explainText.text = "相手が当てるまで待機";
+            opponentTurnText.text = "";
+            explainText.text = "相手がターン待機";
             objectToHide.SetActive(false);
             DisableAllButtons();
-            photonView.RPC("CheckWinCondition", RpcTarget.All);
+            
         }
+
+        int myGuessCount = myGuessListText.text.Split('\n').Length;
+        int opponentGuessCount = opponentGuessListText.text.Split('\n').Length;
+
+        
+
         ResetGuessNumber();
+
+        // 自分の postButton を無効化し、他のプレイヤーの postButton を有効化
+        postButton.gameObject.SetActive(false);
+        opponentTurnText.text = "";
+        photonView.RPC("EnableOtherPlayerPostButton", RpcTarget.Others); // 他プレイヤーのボタンを有効化する
+
         // 自分の答えを相手と同期する
         photonView.RPC("UpdateOpponentAnswer", RpcTarget.OthersBuffered, myAnswerText.text);
+
+        if ((myHits == DIGIT_NUM || opponentHits == DIGIT_NUM) && myGuessCount == opponentGuessCount)
+        {
+            photonView.RPC("CheckWinCondition", RpcTarget.All);
+        }
+    }
+
+    [PunRPC]
+    void EnableOtherPlayerPostButton()
+    {
+        postButton.gameObject.SetActive(true);
+        opponentTurnText.text = "";
     }
 
     [PunRPC]
@@ -148,39 +177,41 @@ public class UIManager : MonoBehaviourPun
     }
 
     [PunRPC]
-    void GameOver()
+    void GameEnd()
     {
         returnStartSceneButton.gameObject.SetActive(true);
     }
 
     [PunRPC]
+    void DisableOpponentPostButton()
+    {
+        postButton.gameObject.SetActive(false);
+    }
+
+    [PunRPC]
     void CheckWinCondition()
     {
-        // 自分と相手のヒット数が3であることを確認
-        if (myHits == DIGIT_NUM && opponentHits == DIGIT_NUM)
+        DisableAllButtons();
+
+        if (myHits > opponentHits)
         {
-            int myGuessCount = myGuessListText.text.Split('\n').Length;
-            int opponentGuessCount = opponentGuessListText.text.Split('\n').Length;
-
-            if (myGuessCount < opponentGuessCount)
-            {
-                explainText.text = "あなたの勝ち！";
-                photonView.RPC("SetLoserText", RpcTarget.Others); // 相手に負けメッセージを表示
-            }
-            else if (myGuessCount > opponentGuessCount)
-            {
-                explainText.text = "あなたの負け！";
-                photonView.RPC("SetWinnerText", RpcTarget.Others); // 相手に勝ちメッセージを表示
-            }
-            else
-            {
-                explainText.text = "引き分け！";
-                photonView.RPC("SetDrawText", RpcTarget.Others); // 引き分けメッセージを表示
-            }
-
-            // ゲーム終了処理を呼び出す
-            photonView.RPC("GameOver", RpcTarget.All);
+            explainText.text = "あなたの勝ち！";
+            photonView.RPC("SetLoserText", RpcTarget.Others); // 相手に負けメッセージを表示
         }
+        else if (myHits < opponentHits)
+        {
+            explainText.text = "あなたの負け！";
+            photonView.RPC("SetWinnerText", RpcTarget.Others); // 相手に勝ちメッセージを表示
+        }
+        else
+        {
+            explainText.text = "引き分け！";
+            photonView.RPC("SetDrawText", RpcTarget.Others); // 引き分けメッセージを表示
+        }
+
+        // ゲーム終了処理を呼び出す
+        photonView.RPC("GameEnd", RpcTarget.All);
+        
     }
 
     [PunRPC]
@@ -267,12 +298,20 @@ public class UIManager : MonoBehaviourPun
     [PunRPC]
     void HandleButtonsAfterAnswerGenerated()
     {
+        opponentTurnText.text = "";
         //postButtonを作成
-        postButton.gameObject.SetActive(true);
+        if (PhotonNetwork.IsMasterClient)
+        {
+            // 自分がマスターの時、自分のポストボタンを有効化、相手のポストボタンを無効化
+            postButton.gameObject.SetActive(true);
+        }
+
         postButton.interactable = false;
 
         explainText.text = "相手の数字を予想";
     }
+
+    
 
     void AddNumberToDisplay(int number)
     {        
